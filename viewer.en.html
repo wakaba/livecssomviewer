@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Live CSSOM Viewer</title>
+<style type="text/css">
+  #source-code, #parsed-tree, #parsed-code {
+    display: block;
+    width: 96%;
+    min-height: 7em; _height: 7em;
+    margin: 0;
+    border: 1px black solid;
+    padding: 0.4em;
+  }
+  h2 {
+    margin: 1em 0 0 0;
+    font-size: 70%;
+  }
+  h2:after {
+    content: ":";
+  }
+  p, pre {
+    margin: 0;
+    text-indent: 0;
+  }
+  li {
+    list-style-type: none;
+  }
+  ol ol {
+    margin-left: 1em;
+    padding-left: 0;
+  }
+  .IE-PAGES, .IE-IMPORTS {
+    border-bottom: 1px gray dashed;
+  }
+  iframe {
+    width: 0;
+    height: 0;
+    margin: 0;
+    border-style: none;
+    padding: 0;
+  }
+  pre {
+    white-space: -moz-pre-wrap;
+    white-space: pre-wrap;
+  }
+  
+  .Interface {
+    color: orangered;
+  }
+  .CSS-AT {
+    color: blue;
+  }
+  .Selectors {
+    font-weight: bolder;
+  }
+  .charset { }
+  .URI { }
+  .URI:before { content: "<" }
+  .URI:after { content: ">" }
+  .MQ { }
+  .CSS-Property-Name {
+    color: #800080;
+  }
+  .CSS-Property-Value { }
+  .CSS-Property-Priority {
+    color: #8000ff;
+  }
+</style>
+<script type="text/javascript">
+  function $(id) {
+    return document.getElementById (id);
+  }
+  
+  var updateTimer = 0;
+  var prevSourceText = '';
+  function sourceTextUpdated (forceUpdate) {
+    if (updateTimer) {
+      clearTimeout (updateTimer);
+    }
+    if (forceUpdate) {
+      prevSourceText = '';
+    }
+    updateTimer = setTimeout (updateParsedTreeAndText, 100);
+  } // sourceTextUpdated
+  
+  function updateParsedTreeAndText () {
+    var newValue = $('source-code').value + '';
+          /* Workaround for <http://suika.fam.cx/gate/2005/sw/cssText#anchor-2> */
+    if (prevSourceText != newValue) {
+      prevSourceText = newValue;
+      window.updateParsed (newValue);
+    }
+  } // updateParsedTreeAndText
+
+  window.onload = function () {
+    if (document.styleSheets[0].rules && document.styleSheets[0].cssText) {
+      var pre = $('parsed-code-parent').appendChild
+          (document.createElement ('pre'));
+      var code = pre.appendChild
+          (document.createElement ('code'));
+      code.id = 'parsed-code';
+
+      window.updateParsed = function (sourceCodeValue) {
+        var iframe = $('style-frame');
+        iframe.onreadystatechange = function () {
+          if (this.readyState == 'complete') {
+            var idoc = this.contentWindow.document;
+            var istyle = idoc.getElementsByTagName ('style')[0];
+            istyle.styleSheet.cssText = sourceCodeValue;
+            
+            var ol = $('parsed-tree');
+            ol.innerHTML = '';
+            window.addIEStyleSheetObjectToList (istyle.styleSheet, ol, true);
+  
+            var code = $('parsed-code');
+            code.innerText = istyle.styleSheet.cssText;
+ 
+            this.onreadystatechange = null;
+          }
+        };
+        iframe.src = "javascript:'<style></style><body></body>'";
+      }; // updateParsed (IE)
+    } else {
+      var ol = $('parsed-code-parent').appendChild
+          (document.createElement ('ol'));
+      ol.id = 'parsed-code';
+      $('show-all-props-all').style.display = 'none';
+      
+      window.updateParsed = function (sourceCodeValue) {
+        var iframe = $('style-frame');
+          var idoc = iframe.contentDocument;
+          idoc.documentElement.innerHTML = '<style></style>';
+          var istyle = idoc.getElementsByTagName ('style')[0];
+          istyle.textContent = sourceCodeValue;
+        var a = function () {
+            
+          var ol = $('parsed-tree');
+          ol.innerHTML = '';
+          addCSSOMStyleSheetObjectToList (istyle.sheet, ol);
+  
+          ol = $('parsed-code');
+          ol.textContent = '';
+          var rules = istyle.sheet.cssRules;
+          for (var i = 0; i < rules.length; i++) {
+            ol.appendChild (document.createElement ('li'))
+                .appendChild (document.createElement ('pre'))
+                .appendChild (document.createElement ('code'))
+                .textContent = rules[i].cssText;
+          }
+        };
+        setTimeout (a, 100);
+          /* Firefox 1.5 does not allow to access to cssRules (!) if
+             it contains an @import that is not loaded yet. */
+      }; // updateParsed (CSSOM)
+    }
+    
+    sourceTextUpdated ();
+  }; // window.onload
+  
+  function addCSSOMStyleSheetObjectToList (obj, rList) {
+    var li = document.createElement ('li');
+    li.innerHTML = '<code class="Interface">StyleSheet</code>';
+    rList.appendChild (li);
+    var rules = obj.cssRules;
+    if (rules && rules.length > 0) {
+      var ol = document.createElement ('ol');
+      li.appendChild (ol);
+      for (var i = 0; i < rules.length; i++) {
+        window.addCSSOMRuleObjectToList (rules[i], ol);
+      }
+    }
+  } // addCSSOMStyleSheetObjectToList
+  
+  function addIEStyleSheetObjectToList (obj, rList, isRoot) {
+    var li = document.createElement ('li');
+    li.innerHTML = '<code class="Interface">StyleSheet</code>';
+    if (isRoot) {
+      var imports = obj.imports;
+      if (imports && imports.length > 0) {
+        var ol = document.createElement ('ol');
+        ol.className = 'IE-IMPORTS';
+        li.appendChild (ol);
+        for (var i = 0; i < imports.length; i++) {
+          window.addIEStyleSheetObjectToList (imports[i], ol, false);
+        }
+      }
+      var pages = obj.pages;
+      if (pages && pages.length > 0) {
+        var ol = document.createElement ('ol');
+        ol.className = 'IE-PAGES';
+        li.appendChild (ol);
+        for (var i = 0; i < pages.length; i++) {
+          window.addIEPageObjectToList (pages[i], ol);
+        }
+      }
+      var rules = obj.rules;
+      if (rules && rules.length > 0) {
+        var ol = document.createElement ('ol');
+        li.appendChild (ol);
+        for (var i = 0; i < rules.length; i++) {
+          window.addIERuleObjectToList (rules[i], ol);
+        }
+      }
+    } else {
+      li.appendChild (document.createTextNode (' '));
+      var uriCode = li.appendChild (document.createElement ('code'));
+      uriCode.innerText = obj.href;
+      uriCode.className = 'URI';
+    }
+    
+    rList.appendChild (li);
+  } // addIEStyleSheetObjectToList
+  
+  function addIEPageObjectToList (obj, rList) {
+    var li = document.createElement ('li');
+    li.innerHTML = '<code class="CSS-AT">@page</code> <code class="Selectors"></code>';
+    li.lastChild.innerText = obj.selector + ':' + obj.pseudoClass;
+    rList.appendChild (li);
+  } // addIEPageObjectToList
+  
+  function addIERuleObjectToList (obj, rList) {
+    var li = document.createElement ('li');
+    li.innerHTML = '<code class="Selectors"></code>';
+    li.lastChild.innerText = obj.selectorText;
+    
+    var ol = document.createElement ('ol');
+    var objstyle = obj.style;
+    var showAll = $('show-all-props').checked;
+    for (n in objstyle) {
+      var v = objstyle[n];
+      if ((showAll || (v && (v != "false" || n != "accelerator"))) &&
+          n != 'cssText') {
+        var cli = document.createElement ('li');
+        var propNameCode = cli.appendChild (document.createElement ('code'));
+        propNameCode.innerText = n;
+        propNameCode.className = 'CSS-Property-Name';
+        cli.appendChild (document.createTextNode (': '));
+        var propValueCode = cli.appendChild (document.createElement ('code'));
+        propValueCode.innerText = v;
+        propValueCode.className = 'CSS-Property-Value';
+        ol.appendChild (cli);
+      }
+    }
+    li.appendChild (ol);
+    
+    rList.appendChild (li);
+  } // addIERuleObjectToList
+  
+  function addCSSOMRuleObjectToList (obj, rList) {
+    var li = document.createElement ('li');
+    li.className = 'type' + obj.type;
+    if (obj.type == 1 || obj.type == 5 || obj.type == 6) {
+      if (obj.type == 1) {
+        li.innerHTML = '<code class="Selectors"></code>';
+        li.lastChild.textContent = obj.selectorText;
+      } else if (obj.type == 5) {
+        li.innerHTML = '<code class="CSS-AT">@font-face</code>';
+      } else {
+        li.innerHTML = '<code class="CSS-AT">@page</code> <code class="Selectors"></code>';
+        li.lastChild.textContent = obj.selectorText;
+      }
+    } else if (obj.type == 2) {
+      li.innerHTML = '<code class="CSS-AT">@charset</code> <code class="charset"></code>';
+      li.lastChild.textContent = obj.encoding;
+    } else if (obj.type == 3) {
+      li.innerHTML = '<code class="CSS-AT">@import</code> <code class="URI"></code> <code class="MQ"></code>';
+      li.lastChild.previousSibling.previousSibling.textContent = obj.href;
+      li.lastChild.textContent = obj.media.mediaText;
+    } else if (obj.type == 4) {
+      li.innerHTML = '<code class="CSS-AT">@media</code> <code class="MQ"></code>';
+      li.lastChild.textContent = obj.media.mediaText;
+    } else {
+      li.appendChild (document.createElement ('code')).textContent = obj.type;
+      li.appendChild (document.createTextNode (': '));
+      li.appendChild (document.createElement ('code')).textContent = obj.cssText;
+    }
+    rList.appendChild (li);
+    
+    var rules = obj.cssRules;
+    if (rules && rules.length > 0) {
+      var ol = document.createElement ('ol');
+      li.appendChild (ol);
+      for (var i = 0; i < rules.length; i++) {
+        window.addCSSOMRuleObjectToList (rules[i], ol);
+      }
+    }
+    
+    var objstyle = obj.style;
+    if (objstyle) {
+      var ol = document.createElement ('ol');
+      for (var i = 0; i < objstyle.length; i++) {
+        var propName = objstyle[i];
+        var cli = document.createElement ('li');
+        var propNameCode = cli.appendChild (document.createElement ('code'));
+        propNameCode.textContent = propName;
+        propNameCode.className = 'CSS-Property-Name';
+        cli.appendChild (document.createTextNode (': '));
+        var propValueCode = cli.appendChild (document.createElement ('code'));
+        propValueCode.textContent = objstyle.getPropertyValue (propName);
+        propValueCode.className = 'CSS-Property-Value';
+        cli.appendChild (document.createTextNode (' !'));
+        var propPriorityCode = cli.appendChild (document.createElement ('code'));
+        propPriorityCode.textContent = objstyle.getPropertyPriority (propName);
+        propPriorityCode.className = 'CSS-Property-Priority';
+        ol.appendChild (cli);
+      }
+      li.appendChild (ol);
+    }
+  } // addCSSOMRuleObjectToList
+  
+  window.toggleBoxDisplay = function (anchor, id) {
+    var obj = document.getElementById (id);
+    if (obj.style.display == 'none') {
+      obj.style.display = 'block';
+      anchor.innerHTML = 'Hide';
+    } else {
+      obj.style.display = 'none';
+      anchor.innerHTML = 'Show';
+    }
+  }; // toggleBoxDisplay
+</script>
+</head>
+<body>
+<h1>Live <abbr title="Cascading Style Sheets Object Model">CSSOM</abbr> 
+Viewer</h1>
+
+<h2>Style sheet to test</h2>
+<p><textarea id="source-code" oninput="sourceTextUpdated ()" onkeypress="sourceTextUpdated ()"></textarea></p>
+
+<h2><abbr title="Cascading Style Sheets Object Model">CSSOM</abbr> View
+(<a href="javascript:"
+    onclick="toggleBoxDisplay (this, 'parsed-tree'); return false">Hide</a><span id="show-all-props-all">, <input type="checkbox" id="show-all-props" onclick="sourceTextUpdated (true)">
+<label for="show-all-props">Show all properties</label></span>)</h2>
+<ol id="parsed-tree"></ol>
+
+<h2><code>cssText</code> view (<a href="javascript:"
+    onclick="toggleBoxDisplay (this, 'parsed-code-parent'); return false">Hide</a>)</h2>
+<div id="parsed-code-parent"></div>
+
+<p><iframe id="style-frame" src="iframe-content.html"></iframe></p>
+<!-- Firefox 1.5 does not allow to access to <style>.sheet.cssRules
+               in Document with javascript:, data:, or about: URI.
+               (But it allows to access to <style>.innerHTML! How secure!) -->
+
+</body>
+</html>
+<!-- License: Public Domain. -->
+<!-- $Date: 2007/05/12 08:16:44 $ -->
