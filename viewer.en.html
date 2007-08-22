@@ -76,6 +76,8 @@
   var updateTimer = 0;
   var prevSourceText = '';
   var prevHTMLSourceText = '';
+  var parseMode = 'noQuirks';
+  var prevParseMode = '';
   function sourceTextUpdated (forceUpdate) {
     if (updateTimer) {
       clearTimeout (updateTimer);
@@ -90,13 +92,10 @@
     var newValue = $('source-code').value + '';
           /* Workaround for <http://suika.fam.cx/gate/2005/sw/cssText#anchor-2> */
     var newHTMLValue = $('html-source-code').value;
-    if (prevHTMLSourceText != newHTMLValue) {
-      prevHTMLSourceText = newHTMLValue;
-      $('style-frame').contentWindow.document.body.innerHTML = newHTMLValue;
-    }
-    if (prevSourceText != newValue) {
+    if (prevSourceText != newValue || prevHTMLSourceText != newHTMLValue) {
       prevSourceText = newValue;
-      window.updateParsed (newValue);
+      prevHTMLSourceText = newHTMLValue;
+      window.updateParsed (newValue, newHTMLValue);
     }
   } // updateParsedTreeAndText
 
@@ -108,7 +107,7 @@
           (document.createElement ('code'));
       code.id = 'parsed-code';
 
-      window.updateParsed = function (sourceCodeValue) {
+      window.updateParsed = function (sourceCodeValue, htmlSourceCodeValue) {
         var iframe = $('style-frame');
         iframe.onreadystatechange = function () {
           if (this.readyState == 'complete') {
@@ -123,12 +122,19 @@
             var code = $('parsed-code');
             code.innerText = istyle.styleSheet.cssText;
 
-            idoc.body.innerHTML = prevHTMLSourceText;
+            idoc.body.innerHTML = htmlSourceCodeValue;
  
             this.onreadystatechange = null;
           }
         };
-        iframe.src = "javascript:'<style></style><body></body>'";
+        var text = '<style></style><body></body>';
+        if (parseMode == 'noQuirks') {
+          text = '<!DOCTYPE HTML>' + text;
+        } else if (parseMode == 'limitedQuirks') {
+          text = '<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\">' +
+              text;
+        }
+        iframe.src = 'javascript:"'+text+'"';
       }; // updateParsed (IE)
     } else {
       var ol = $('parsed-code-parent').appendChild
@@ -136,13 +142,23 @@
       ol.id = 'parsed-code';
       $('show-all-props-all').style.display = 'none';
       
-      window.updateParsed = function (sourceCodeValue) {
+      window.updateParsed = function (sourceCodeValue, htmlSourceCodeValue) {
         var iframe = $('style-frame');
-          var idoc = iframe.contentDocument;
-          idoc.getElementsByTagName ('head')[0].innerHTML = '<style></style>';
-          var istyle = idoc.getElementsByTagName ('style')[0];
-          istyle.textContent = sourceCodeValue;
-        var a = function () {
+        var idoc = iframe.contentDocument;
+        if (prevParseMode != parseMode) {
+          if (parseMode == 'noQuirks') {
+            idoc.write ('<!DOCTYPE HTML>');
+          } else if (parseMode == 'limitedQuirks') {
+            idoc.write ('<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">');
+          }
+          idoc.write ('<html><head><style></style></head>');
+          idoc.write ('<body></body></html>');
+          idoc.close ();
+          prevParseMode = parseMode;
+        }
+
+        var istyle = idoc.getElementsByTagName ('style')[0];
+        istyle.textContent = sourceCodeValue;
             
           var ol = $('parsed-tree');
           ol.innerHTML = '';
@@ -157,10 +173,10 @@
                 .appendChild (document.createElement ('code'))
                 .textContent = rules[i].cssText;
           }
-        };
-        setTimeout (a, 100);
           /* Firefox 1.5 does not allow to access to cssRules (!) if
              it contains an @import that is not loaded yet. */
+
+        idoc.body.innerHTML = htmlSourceCodeValue;
       }; // updateParsed (CSSOM)
     }
     
@@ -349,7 +365,7 @@ Viewer</h1>
 
 <h2>Rendered document view (<a href="javascript:"
     onclick="toggleBoxDisplay (this, 'style-frame'); return false">Hide</a>)</h2>
-<p><iframe id="style-frame" src="iframe-content.html"></iframe></p>
+<p><iframe id="style-frame" src="about:blank"></iframe></p>
 <!-- Firefox 1.5 does not allow to access to <style>.sheet.cssRules
                in Document with javascript:, data:, or about: URI.
                (But it allows to access to <style>.innerHTML! How secure!) -->
@@ -359,10 +375,26 @@ to test (<a href="javascript:"
     onclick="toggleBoxDisplay (this, 'html-source-code'); return false">Hide</a>)</h2>
 <p><textarea id="html-source-code" oninput="sourceTextUpdated ()" onkeypress="sourceTextUpdated ()"></textarea></p>
 
+<p><input type=radio name=compatMode value="noQuirks" checked
+    id=compatMode-no-quirks
+    onchange="parseMode = value; prevSourceText = ''; sourceTextUpdated ()"
+    onclick=" onchange () ">
+    <label for=compatMode-no-quirks>No quirks</label>
+<input type=radio name=compatMode value="limitedQuirks"
+    id=compatMode-limited-quirks
+    onchange="parseMode = value; prevSourceText = ''; sourceTextUpdated ()"
+    onclick=" onchange () ">
+    <label for=compatMode-limited-quirks>Limited quirks</label>
+<input type=radio name=compatMode value="quirks"
+    id=compatMode-quirks
+    onchange="parseMode = value; prevSourceText = ''; sourceTextUpdated ()"
+    onclick=" onchange () ">
+    <label for=compatMode-quirks>Quirks</label></p>
+
 <p>See also <a href="http://suika.fam.cx/gate/2005/sw/Live%20CSSOM%20Viewer">SuikaWiki:Live 
 <abbr title="Cascading Style Sheets Object Model">CSSOM</abbr> Viewer</a></p>
 
 </body>
 </html>
 <!-- License: Public Domain. -->
-<!-- $Date: 2007/08/22 12:37:38 $ -->
+<!-- $Date: 2007/08/22 13:42:03 $ -->
