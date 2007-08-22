@@ -3,7 +3,7 @@
 <head>
 <title>Live CSSOM Viewer</title>
 <style type="text/css">
-  #source-code, #parsed-tree, #parsed-code {
+  #source-code, #parsed-tree, #parsed-code, #style-frame, #html-source-code {
     display: block;
     width: 96%;
     min-height: 7em; _height: 7em;
@@ -32,6 +32,7 @@
   .IE-PAGES, .IE-IMPORTS {
     border-bottom: 1px gray dashed;
   }
+/*
   iframe {
     width: 0;
     height: 0;
@@ -39,6 +40,7 @@
     border-style: none;
     padding: 0;
   }
+*/
   pre {
     white-space: -moz-pre-wrap;
     white-space: pre-wrap;
@@ -73,6 +75,7 @@
   
   var updateTimer = 0;
   var prevSourceText = '';
+  var prevHTMLSourceText = '';
   function sourceTextUpdated (forceUpdate) {
     if (updateTimer) {
       clearTimeout (updateTimer);
@@ -86,6 +89,11 @@
   function updateParsedTreeAndText () {
     var newValue = $('source-code').value + '';
           /* Workaround for <http://suika.fam.cx/gate/2005/sw/cssText#anchor-2> */
+    var newHTMLValue = $('html-source-code').value;
+    if (prevHTMLSourceText != newHTMLValue) {
+      prevHTMLSourceText = newHTMLValue;
+      $('style-frame').contentWindow.document.body.innerHTML = newHTMLValue;
+    }
     if (prevSourceText != newValue) {
       prevSourceText = newValue;
       window.updateParsed (newValue);
@@ -114,6 +122,8 @@
   
             var code = $('parsed-code');
             code.innerText = istyle.styleSheet.cssText;
+
+            idoc.body.innerHTML = prevHTMLSourceText;
  
             this.onreadystatechange = null;
           }
@@ -129,7 +139,7 @@
       window.updateParsed = function (sourceCodeValue) {
         var iframe = $('style-frame');
           var idoc = iframe.contentDocument;
-          idoc.documentElement.innerHTML = '<style></style>';
+          idoc.getElementsByTagName ('head')[0].innerHTML = '<style></style>';
           var istyle = idoc.getElementsByTagName ('style')[0];
           istyle.textContent = sourceCodeValue;
         var a = function () {
@@ -337,10 +347,17 @@ Viewer</h1>
     onclick="toggleBoxDisplay (this, 'parsed-code-parent'); return false">Hide</a>)</h2>
 <div id="parsed-code-parent"></div>
 
+<h2>Rendered document view (<a href="javascript:"
+    onclick="toggleBoxDisplay (this, 'style-frame'); return false">Hide</a>)</h2>
 <p><iframe id="style-frame" src="iframe-content.html"></iframe></p>
 <!-- Firefox 1.5 does not allow to access to <style>.sheet.cssRules
                in Document with javascript:, data:, or about: URI.
                (But it allows to access to <style>.innerHTML! How secure!) -->
+
+<h2><abbr title="Hypertext Markup Language">HTML</abbr> body fragment 
+to test (<a href="javascript:"
+    onclick="toggleBoxDisplay (this, 'html-source-code'); return false">Hide</a>)</h2>
+<p><textarea id="html-source-code" oninput="sourceTextUpdated ()" onkeypress="sourceTextUpdated ()"></textarea></p>
 
 <p>See also <a href="http://suika.fam.cx/gate/2005/sw/Live%20CSSOM%20Viewer">SuikaWiki:Live 
 <abbr title="Cascading Style Sheets Object Model">CSSOM</abbr> Viewer</a></p>
@@ -348,4 +365,4 @@ Viewer</h1>
 </body>
 </html>
 <!-- License: Public Domain. -->
-<!-- $Date: 2007/05/12 08:37:12 $ -->
+<!-- $Date: 2007/08/22 12:37:38 $ -->
