@@ -2,14 +2,22 @@
 <html lang="en">
 <head>
 <title>Live CSSOM Viewer</title>
+<link rel=author href="http://suika.fam.cx/~wakaba/who?">
+<link rel=license href="http://suika.fam.cx/c/gnu/gpl">
 <style type="text/css">
-  #source-code, #parsed-tree, #parsed-code, #style-frame, #html-source-code {
+  #source-code, #parsed-tree, #parsed-code, #style-frame, #html-source-code,
+  #log {
     display: block;
     width: 96%;
     min-height: 7em; _height: 7em;
     margin: 0;
     border: 1px black solid;
     padding: 0.4em;
+  }
+  #log {
+    min-height: 2em; _height: 2em;
+    max-height: 7em;
+    overflow: auto;
   }
   h2 {
     margin: 1em 0 0 0;
@@ -112,6 +120,12 @@
         iframe.onreadystatechange = function () {
           if (this.readyState == 'complete') {
             var idoc = this.contentWindow.document;
+
+            $('log').innerHTML = '';
+            this.contentWindow.w = function (s) {
+              record (s);
+            };
+
             var istyle = idoc.getElementsByTagName ('style')[0];
             istyle.styleSheet.cssText = sourceCodeValue;
             
@@ -155,7 +169,12 @@
           idoc.write ('<body></body></html>');
           idoc.close ();
           prevParseMode = parseMode;
+
+          iframe.contentWindow.w = function (s) {
+            record (s);
+          };
         }
+        $('log').innerHTML = '';
 
         var istyle = idoc.getElementsByTagName ('style')[0];
         istyle.textContent = sourceCodeValue;
@@ -344,6 +363,10 @@
       anchor.innerHTML = 'Show';
     }
   }; // toggleBoxDisplay
+
+  function record (s) {
+    $('log').appendChild (document.createTextNode (s + "\r\n"));
+  } // record
 </script>
 </head>
 <body>
@@ -391,10 +414,16 @@ to test (<a href="javascript:"
     onclick=" onchange () ">
     <label for=compatMode-quirks>Quirks</label></p>
 
+<h2>Log</h2>
+<pre id="log"></pre>
+<p>This script puts a function <code>w (<var>s</var>)</code>into the global
+scope of the test page, where <var>s</var> is a string to output to the
+log.  Also, a file <code>image</code> (a PNG image) is accessible in the 
+current directory.</p>
+
 <p>See also <a href="http://suika.fam.cx/gate/2005/sw/Live%20CSSOM%20Viewer">SuikaWiki:Live 
 <abbr title="Cascading Style Sheets Object Model">CSSOM</abbr> Viewer</a></p>
 
 </body>
 </html>
-<!-- License: Public Domain. -->
-<!-- $Date: 2007/08/22 14:27:10 $ -->
+<!-- $Date: 2007/08/23 02:06:01 $ -->
