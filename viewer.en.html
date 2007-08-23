@@ -109,7 +109,8 @@
           encodeURIComponent (newValue) + ';h=' +
           encodeURIComponent (newHTMLValue) + ';p=' +
           (parseMode == 'noQuirks' ? 'n' :
-              parseMode == 'limitedQuirks' ? 'l' : 'q');
+              parseMode == 'limitedQuirks' ? 'l' : 'q') +
+          ';x=' + $('parse-context').value;
     }
   } // updateParsedTreeAndText
 
@@ -122,6 +123,8 @@
       code.id = 'parsed-code';
 
       window.updateParsed = function (sourceCodeValue, htmlSourceCodeValue) {
+        var pcontext = $('parse-context').value;
+
         var iframe = $('style-frame');
         iframe.onreadystatechange = function () {
           if (this.readyState == 'complete') {
@@ -131,34 +134,44 @@
             this.contentWindow.w = function (s) {
               record (s);
             };
-
-            var istyle = idoc.getElementsByTagName ('style')[0];
-            istyle.styleSheet.cssText = sourceCodeValue;
             
+            var idiv = idoc.body.firstChild;
             var ol = $('parsed-tree');
             ol.innerHTML = '';
-            window.addIEStyleSheetObjectToList (istyle.styleSheet, ol, true);
+            var code = $('parsed-code');
+
+            if (pcontext == 'style-attribute') {
+              window.addIEStyleDeclarationObjectToList (idiv.style, ol);
+              code.innerText = idiv.style.cssText;
+            } else {
+              var istyle = idoc.getElementsByTagName ('style')[0];
+              istyle.styleSheet.cssText = sourceCodeValue;
+              window.addIEStyleSheetObjectToList (istyle.styleSheet, ol, true);
+              code.innerText = istyle.styleSheet.cssText;
+            }
+            
             $('cssTreeLink').href = 'data:text/plain;charset=utf-8,' +
                 encodeURIComponent ('<ol>' + ol.innerHTML + '</ol>');
-  
-            var code = $('parsed-code');
-            code.innerText = istyle.styleSheet.cssText;
             $('cssTextLink').href = 'data:text/plain;charset=utf-8,' +
                 encodeURIComponent ($('parsed-code-parent').innerHTML);
 
-            idoc.body.innerHTML = htmlSourceCodeValue;
+            idiv.innerHTML = htmlSourceCodeValue;
  
             this.onreadystatechange = null;
           }
         };
-        var text = '<style></style><body></body>';
+        var text = '<style></style><body><div';
+        if (pcontext == 'style-attribute') {
+          text += ' style="' + sourceCodeValue + '"';
+        }
+        text += '></div></body>';
         if (parseMode == 'noQuirks') {
           text = '<!DOCTYPE HTML>' + text;
         } else if (parseMode == 'limitedQuirks') {
-          text = '<!DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\">' +
+          text = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">' +
               text;
         }
-        iframe.src = 'javascript:"'+text+'"';
+        iframe.src = 'javascript:\''+text+'\'';
       }; // updateParsed (IE)
     } else {
       var ol = $('parsed-code-parent').appendChild
@@ -176,7 +189,7 @@
             idoc.write ('<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">');
           }
           idoc.write ('<html><head><style></style></head>');
-          idoc.write ('<body></body></html>');
+          idoc.write ('<body><div></div></body></html>');
           idoc.close ();
           prevParseMode = parseMode;
 
@@ -186,30 +199,49 @@
         }
         $('log').innerHTML = '';
 
-        var istyle = idoc.getElementsByTagName ('style')[0];
-        istyle.textContent = sourceCodeValue;
-            
-          var ol = $('parsed-tree');
-          ol.innerHTML = '';
+        var pcontext = $('parse-context').value;
+
+        var idiv = idoc.body.firstChild;
+
+        var ol = $('parsed-tree');
+        ol.innerHTML = '';
+
+        var ol2 = $('parsed-code');
+        ol2.textContent = '';
+
+        if (pcontext == 'style-attribute') {
+          idiv.setAttribute ('style', sourceCodeValue);
+
+          window.addCSSOMStyleDeclarationObjectToList (idiv.style, ol);
+
+          ol2.appendChild (document.createElement ('li'))
+              .appendChild (document.createElement ('pre'))
+              .appendChild (document.createElement ('code'))
+              .textContent = idiv.style.cssText;
+        } else {
+          var istyle = idoc.getElementsByTagName ('style')[0];
+          istyle.textContent = sourceCodeValue;
+
           addCSSOMStyleSheetObjectToList (istyle.sheet, ol);
-          $('cssTreeLink').href = 'data:text/plain;charset=utf-8,' +
-              encodeURIComponent ('<ol>' + ol.innerHTML + '</ol>');
-  
-          ol = $('parsed-code');
-          ol.textContent = '';
+
           var rules = istyle.sheet.cssRules;
           for (var i = 0; i < rules.length; i++) {
-            ol.appendChild (document.createElement ('li'))
+            ol2.appendChild (document.createElement ('li'))
                 .appendChild (document.createElement ('pre'))
                 .appendChild (document.createElement ('code'))
                 .textContent = rules[i].cssText;
           }
-          $('cssTextLink').href = 'data:text/plain;charset=utf-8,' +
-              encodeURIComponent ('<ol>' + ol.innerHTML + '</ol>');
+        }
+            
+        $('cssTreeLink').href = 'data:text/plain;charset=utf-8,' +
+            encodeURIComponent ('<ol>' + ol.innerHTML + '</ol>');
+  
+        $('cssTextLink').href = 'data:text/plain;charset=utf-8,' +
+            encodeURIComponent ('<ol>' + ol2.innerHTML + '</ol>');
           /* Firefox 1.5 does not allow to access to cssRules (!) if
              it contains an @import that is not loaded yet. */
 
-        idoc.body.innerHTML = htmlSourceCodeValue;
+        idiv.innerHTML = htmlSourceCodeValue;
       }; // updateParsed (CSSOM)
     }
 
@@ -235,6 +267,8 @@
             $('compatMode-quirks').checked = true;
             parseMode = 'quirks';
           }
+        } else if (v[0] == 'x') {
+          $('parse-context').value = v[1];
         }
       }
     }
@@ -309,23 +343,7 @@
     li.lastChild.innerText = obj.selectorText;
     
     var ol = document.createElement ('ol');
-    var objstyle = obj.style;
-    var showAll = $('show-all-props').checked;
-    for (n in objstyle) {
-      var v = objstyle[n];
-      if ((showAll || (v && (v != "false" || n != "accelerator"))) &&
-          n != 'cssText') {
-        var cli = document.createElement ('li');
-        var propNameCode = cli.appendChild (document.createElement ('code'));
-        propNameCode.innerText = n;
-        propNameCode.className = 'CSS-Property-Name';
-        cli.appendChild (document.createTextNode (': '));
-        var propValueCode = cli.appendChild (document.createElement ('code'));
-        propValueCode.innerText = v;
-        propValueCode.className = 'CSS-Property-Value';
-        ol.appendChild (cli);
-      }
-    }
+    window.addIEStyleDeclarationObjectToList (obj.style, ol);
     li.appendChild (ol);
     
     rList.appendChild (li);
@@ -373,25 +391,48 @@
     var objstyle = obj.style;
     if (objstyle) {
       var ol = document.createElement ('ol');
-      for (var i = 0; i < objstyle.length; i++) {
-        var propName = objstyle[i];
-        var cli = document.createElement ('li');
-        var propNameCode = cli.appendChild (document.createElement ('code'));
-        propNameCode.textContent = propName;
-        propNameCode.className = 'CSS-Property-Name';
-        cli.appendChild (document.createTextNode (': '));
-        var propValueCode = cli.appendChild (document.createElement ('code'));
-        propValueCode.textContent = objstyle.getPropertyValue (propName);
-        propValueCode.className = 'CSS-Property-Value';
-        cli.appendChild (document.createTextNode (' !'));
-        var propPriorityCode = cli.appendChild (document.createElement ('code'));
-        propPriorityCode.textContent = objstyle.getPropertyPriority (propName);
-        propPriorityCode.className = 'CSS-Property-Priority';
-        ol.appendChild (cli);
-      }
+      window.addCSSOMStyleDeclarationObjectToList (objstyle, ol);
       li.appendChild (ol);
     }
   } // addCSSOMRuleObjectToList
+
+  window.addIEStyleDeclarationObjectToList = function (objstyle, ol) {
+    var showAll = $('show-all-props').checked;
+    for (n in objstyle) {
+      var v = objstyle[n];
+      if ((showAll || (v && (v != "false" || n != "accelerator"))) &&
+          n != 'cssText') {
+        var cli = document.createElement ('li');
+        var propNameCode = cli.appendChild (document.createElement ('code'));
+        propNameCode.innerText = n;
+        propNameCode.className = 'CSS-Property-Name';
+        cli.appendChild (document.createTextNode (': '));
+        var propValueCode = cli.appendChild (document.createElement ('code'));
+        propValueCode.innerText = v;
+        propValueCode.className = 'CSS-Property-Value';
+        ol.appendChild (cli);
+      }
+    }
+  }; // addIEStyleDeclarationObjectToList
+
+  window.addCSSOMStyleDeclarationObjectToList = function (objstyle, ol) {
+    for (var i = 0; i < objstyle.length; i++) {
+      var propName = objstyle[i];
+      var cli = document.createElement ('li');
+      var propNameCode = cli.appendChild (document.createElement ('code'));
+      propNameCode.textContent = propName;
+      propNameCode.className = 'CSS-Property-Name';
+      cli.appendChild (document.createTextNode (': '));
+      var propValueCode = cli.appendChild (document.createElement ('code'));
+      propValueCode.textContent = objstyle.getPropertyValue (propName);
+      propValueCode.className = 'CSS-Property-Value';
+      cli.appendChild (document.createTextNode (' !'));
+      var propPriorityCode = cli.appendChild (document.createElement ('code'));
+      propPriorityCode.textContent = objstyle.getPropertyPriority (propName);
+      propPriorityCode.className = 'CSS-Property-Priority';
+      ol.appendChild (cli);
+    }
+  }; // addCSSOMStyleDeclarationObjectToList
   
   window.toggleBoxDisplay = function (anchor, id) {
     var obj = document.getElementById (id);
@@ -415,7 +456,11 @@ Viewer</h1>
 
 <h2>Style sheet to test (<a href="" rel=permalink id=permalink>permalink</a>,
 <a href="javascript:"
-    onclick="toggleBoxDisplay (this, 'source-code'); return false">hide</a>)</h2>
+    onclick="toggleBoxDisplay (this, 'source-code'); return false">hide</a>,
+    <select id=parse-context onchange="sourceTextUpdated (true)">
+    <option value=style-element selected>HTML &lt;style> element</option>
+    <option value=style-attribute>HTML style="" attribute</option>
+    </select>)</h2>
 <p><textarea id="source-code" oninput="sourceTextUpdated ()" onkeypress="sourceTextUpdated ()"></textarea></p>
 
 <h2><a href="data:," id=cssTreeLink><abbr title="Cascading Style Sheets Object Model">CSSOM</abbr> 
@@ -436,7 +481,7 @@ View</a> (<a href="javascript:"
                in Document with javascript:, data:, or about: URI.
                (But it allows to access to <style>.innerHTML! How secure!) -->
 
-<h2><abbr title="Hypertext Markup Language">HTML</abbr> body fragment 
+<h2><abbr title="Hypertext Markup Language">HTML</abbr> fragment 
 to test (<a href="javascript:"
     onclick="toggleBoxDisplay (this, 'html-source-code'); return false">hide</a>)</h2>
 <p><textarea id="html-source-code" oninput="sourceTextUpdated ()" onkeypress="sourceTextUpdated ()"></textarea></p>
@@ -473,7 +518,7 @@ is accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2007/08/23 09:00:51 $ -->
+<!-- $Date: 2007/08/23 09:39:49 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
