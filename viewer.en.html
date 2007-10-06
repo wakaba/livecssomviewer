@@ -80,6 +80,13 @@
   function $(id) {
     return document.getElementById (id);
   }
+
+  function htescape (s) {
+    return s.replace (/&/, '&amp;')
+        .replace (/</, '&lt;')
+        .replace (/>/, '&gt;')
+        .replace (/"/, '&quot;');
+  } // s
   
   var updateTimer = 0;
   var prevSourceText = null;
@@ -115,6 +122,7 @@
   } // updateParsedTreeAndText
 
   window.onload = function () {
+    var currentHTMLDoctype = '';
     if (document.styleSheets[0].rules && document.styleSheets[0].cssText) {
       var pre = $('parsed-code-parent').appendChild
           (document.createElement ('pre'));
@@ -157,19 +165,39 @@
 
             idiv.innerHTML = htmlSourceCodeValue;
  
+            var htmlAll = encodeURIComponent (currentHTMLDoctype + '<html>' +
+                idoc.documentElement.innerHTML + '</html>');
+            $('test-as-data').href = 'data:text/html;charset=utf-8,' + htmlAll;
+            $('test-as-about').href = 'about:' + htmlAll;
+            $('test-as-javascript').href = 'javascript:%22' +
+                htmlAll.replace (/%5C/g, '%5C%5C')
+                    .replace (/%0D/g, '%5Cu000D')
+                    .replace (/%0A/g, '%5Cu000A')
+                    .replace (/%22/g, '%5C%22') + '%22';
+            /*
+              Note that these URI might not be equal to the one rendered,
+              since |innerHTML| might not be return a round-tripable
+              serialization of the DOM.  Especially, it cannot handle
+              the case with |</style>| contained in |style| element.
+              In addition, WinIE normalize |style| content.
+            */
+
             this.onreadystatechange = null;
           }
         };
         var text = '<style></style><body><div';
         if (pcontext == 'style-attribute') {
-          text += ' style="' + sourceCodeValue + '"';
+          text += ' style="' + htescape (sourceCodeValue) + '"';
+          /* NOTE: Or, you can set idiv.style.cssText */
         }
         text += '></div></body>';
         if (parseMode == 'noQuirks') {
-          text = '<!DOCTYPE HTML>' + text;
+          text = (currentHTMLDoctype = '<!DOCTYPE HTML>') + text;
         } else if (parseMode == 'limitedQuirks') {
-          text = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">' +
+          text = (currentHTMLDoctype = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">') +
               text;
+        } else {
+          currentHTMLDoctype = '';
         }
         iframe.src = 'javascript:\''+text+'\'';
       }; // updateParsed (IE)
@@ -184,9 +212,11 @@
         var idoc = iframe.contentDocument;
         if (prevParseMode != parseMode) {
           if (parseMode == 'noQuirks') {
-            idoc.write ('<!DOCTYPE HTML>');
+            idoc.write (currentHTMLDoctype = '<!DOCTYPE HTML>');
           } else if (parseMode == 'limitedQuirks') {
-            idoc.write ('<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">');
+            idoc.write (currentHTMLDoctype = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">');
+          } else {
+            currentHTMLDoctype = '';
           }
           idoc.write ('<html><head><style></style></head>');
           idoc.write ('<body><div></div></body></html>');
@@ -242,6 +272,22 @@
              it contains an @import that is not loaded yet. */
 
         idiv.innerHTML = htmlSourceCodeValue;
+
+        var htmlAll = encodeURIComponent (currentHTMLDoctype + '<html>' +
+            idoc.documentElement.innerHTML + '</html>');
+        $('test-as-data').href = 'data:text/html;charset=utf-8,' + htmlAll;
+        $('test-as-about').href = 'about:' + htmlAll;
+        $('test-as-javascript').href = 'javascript:%22' +
+            htmlAll.replace (/%5C/g, '%5C%5C')
+                .replace (/%0D/g, '%5Cu000D')
+                .replace (/%0A/g, '%5Cu000A')
+                .replace (/%22/g, '%5C%22') + '%22';
+        /*
+          Note that these URI might not be equal to the one rendered,
+          since |innerHTML| might not be return a round-tripable serialization
+          of the DOM.  Especially, it cannot handle the case with
+          |</style>| contained in |style| element.
+        */
       }; // updateParsed (CSSOM)
     }
 
@@ -475,7 +521,10 @@ View</a> (<a href="javascript:"
 <div id="parsed-code-parent"></div>
 
 <h2>Rendered document view (<a href="javascript:"
-    onclick="toggleBoxDisplay (this, 'style-frame'); return false">hide</a>)</h2>
+    onclick="toggleBoxDisplay (this, 'style-frame'); return false">hide</a>,
+<a href="data:," id=test-as-data>as <code>data:</code></a>,
+<a href="about:" id=test-as-about>as <code>about:</code></a>,
+<a href="javascript:" id=test-as-javascript>as <code>javascript:</code></a>)</h2>
 <p><iframe id="style-frame" src="about:blank"></iframe></p>
 <!-- Firefox 1.5 does not allow to access to <style>.sheet.cssRules
                in Document with javascript:, data:, or about: URI.
@@ -518,7 +567,7 @@ is accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2007/08/23 09:39:49 $ -->
+<!-- $Date: 2007/10/06 06:17:04 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
