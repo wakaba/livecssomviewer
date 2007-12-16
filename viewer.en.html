@@ -240,6 +240,7 @@
         ol2.textContent = '';
 
         if (pcontext == 'style-attribute') {
+          idiv.setAttribute ('style', '');
           idiv.setAttribute ('style', sourceCodeValue);
 
           window.addCSSOMStyleDeclarationObjectToList (idiv.style, ol);
@@ -567,7 +568,7 @@ is accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2007/10/06 06:17:04 $ -->
+<!-- $Date: 2007/12/16 05:52:00 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
