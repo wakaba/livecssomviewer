@@ -255,12 +255,16 @@
 
           addCSSOMStyleSheetObjectToList (istyle.sheet, ol);
 
-          var rules = istyle.sheet.cssRules;
-          for (var i = 0; i < rules.length; i++) {
-            ol2.appendChild (document.createElement ('li'))
-                .appendChild (document.createElement ('pre'))
-                .appendChild (document.createElement ('code'))
-                .textContent = rules[i].cssText;
+          try {
+            var rules = istyle.sheet.cssRules; // Security error, if it contains @import, in Firefox 2
+            for (var i = 0; i < rules.length; i++) {
+              ol2.appendChild (document.createElement ('li'))
+                  .appendChild (document.createElement ('pre'))
+                  .appendChild (document.createElement ('code'))
+                  .textContent = rules[i].cssText;
+            }
+          } catch (e) {
+            record (e);
           }
         }
             
@@ -327,51 +331,67 @@
     var li = document.createElement ('li');
     li.innerHTML = '<code class="Interface">StyleSheet</code>';
     rList.appendChild (li);
-    var rules = obj.cssRules;
-    if (rules && rules.length > 0) {
-      var ol = document.createElement ('ol');
-      li.appendChild (ol);
-      for (var i = 0; i < rules.length; i++) {
-        window.addCSSOMRuleObjectToList (rules[i], ol);
+    try {
+      var rules = obj.cssRules; // Security error, if it contains @import, in Firefox 2
+      if (rules && rules.length > 0) {
+        var ol = document.createElement ('ol');
+        li.appendChild (ol);
+        for (var i = 0; i < rules.length; i++) {
+          window.addCSSOMRuleObjectToList (rules[i], ol);
+        }
       }
+    } catch (e) {
+      record (e);
     }
   } // addCSSOMStyleSheetObjectToList
   
   function addIEStyleSheetObjectToList (obj, rList, isRoot) {
     var li = document.createElement ('li');
     li.innerHTML = '<code class="Interface">StyleSheet</code>';
-    if (isRoot) {
-      var imports = obj.imports;
-      if (imports && imports.length > 0) {
-        var ol = document.createElement ('ol');
-        ol.className = 'IE-IMPORTS';
-        li.appendChild (ol);
-        for (var i = 0; i < imports.length; i++) {
-          window.addIEStyleSheetObjectToList (imports[i], ol, false);
-        }
-      }
-      var pages = obj.pages;
-      if (pages && pages.length > 0) {
-        var ol = document.createElement ('ol');
-        ol.className = 'IE-PAGES';
-        li.appendChild (ol);
-        for (var i = 0; i < pages.length; i++) {
-          window.addIEPageObjectToList (pages[i], ol);
-        }
-      }
-      var rules = obj.rules;
-      if (rules && rules.length > 0) {
-        var ol = document.createElement ('ol');
-        li.appendChild (ol);
-        for (var i = 0; i < rules.length; i++) {
-          window.addIERuleObjectToList (rules[i], ol);
-        }
-      }
-    } else {
+    if (!isRoot) {
       li.appendChild (document.createTextNode (' '));
       var uriCode = li.appendChild (document.createElement ('code'));
       uriCode.innerText = obj.href;
       uriCode.className = 'URI';
+    }
+
+    var func = function () {
+      try { // Security error, if the style sheet is from non-same-origin.
+        var imports = obj.imports;
+        if (imports && imports.length > 0) {
+          var ol = document.createElement ('ol');
+          ol.className = 'IE-IMPORTS';
+          li.appendChild (ol);
+          for (var i = 0; i < imports.length; i++) {
+            window.addIEStyleSheetObjectToList (imports[i], ol, false);
+          }
+        }
+        var pages = obj.pages;
+        if (pages && pages.length > 0) {
+          var ol = document.createElement ('ol');
+          ol.className = 'IE-PAGES';
+          li.appendChild (ol);
+          for (var i = 0; i < pages.length; i++) {
+            window.addIEPageObjectToList (pages[i], ol);
+          }
+        }
+        var rules = obj.rules;
+        if (rules && rules.length > 0) {
+          var ol = document.createElement ('ol');
+          li.appendChild (ol);
+          for (var i = 0; i < rules.length; i++) {
+            window.addIERuleObjectToList (rules[i], ol);
+          }
+        }
+      } catch (e) {
+        record (e.message);
+      }
+    };
+    if (isRoot) {
+      func ();
+    } else {
+      // NOTE: Waiting for imported style sheet being loaded.
+      setTimeout (func, 1000);
     }
     
     rList.appendChild (li);
@@ -416,6 +436,8 @@
       li.innerHTML = '<code class="CSS-AT">@import</code> <code class="URI"></code> <code class="MQ"></code>';
       li.lastChild.previousSibling.previousSibling.textContent = obj.href;
       li.lastChild.textContent = obj.media.mediaText;
+      addCSSOMStyleSheetObjectToList
+          (obj.styleSheet, li.appendChild (document.createElement ('ul')));
     } else if (obj.type == 4) {
       li.innerHTML = '<code class="CSS-AT">@media</code> <code class="MQ"></code>';
       li.lastChild.textContent = obj.media.mediaText;
@@ -557,8 +579,9 @@ to test (<a href="javascript:"
 <pre id="log"></pre>
 <p>This script puts a function <code>w (<var>s</var>)</code>into the global
 scope of the test page, where <var>s</var> is a string to output to the
-log.  Also, a file <a href=image><code>image</code></a> (a PNG image) 
-is accessible in the current directory.</p>
+log.  Also, files <a href=image><code>image</code></a> (a <abbr>PNG</abbr> 
+image) and <a href=style><code>style</code></a> (a <abbr>CSS</abbr> style
+sheet) are accessible in the current directory.</p>
 
 <footer>
 <p>See also <a href="http://suika.fam.cx/gate/2005/sw/Live%20CSSOM%20Viewer"
@@ -568,7 +591,7 @@ is accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2007/12/16 05:52:00 $ -->
+<!-- $Date: 2007/12/23 10:00:03 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
