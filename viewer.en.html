@@ -185,6 +185,19 @@
             this.contentWindow.w = function (s) {
               record (s);
             };
+            this.contentWindow.u = u;
+            this.contentWindow.ss = function () {
+              return idoc.getElementsByTagName ('style')[0].styleSheet;
+            };
+            this.contentWindow.sd = function () {
+              if ($('parse-context').value == 'style-attribute') {
+                return idoc.body.firstChild.style;
+              } else {
+                var sheet = idoc.getElementsByTagName ('style')[0].styleSheet;
+                var rule = sheet.rules[0];
+                return rule ? rule.style : null;
+              }
+            };
             
             if (pcontext == 'style-attribute') {
               //
@@ -647,7 +660,7 @@ sheet) are accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2007/12/30 09:52:26 $ -->
+<!-- $Date: 2007/12/30 10:18:22 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
