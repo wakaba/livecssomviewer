@@ -232,12 +232,13 @@
         var pcontext = $('parse-context').value;
 
         var idiv = idoc.body.firstChild;
+        idiv.setAttribute ('style', '');
+        var istyle = idoc.getElementsByTagName ('style')[0];
+        istyle.textContent = '';
 
         if (pcontext == 'style-attribute') {
-          idiv.setAttribute ('style', '');
           idiv.setAttribute ('style', sourceCodeValue);
         } else {
-          var istyle = idoc.getElementsByTagName ('style')[0];
           istyle.textContent = sourceCodeValue;
         }
 
@@ -604,7 +605,7 @@ sheet) are accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2007/12/30 09:21:25 $ -->
+<!-- $Date: 2007/12/30 09:24:18 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
