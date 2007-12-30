@@ -130,6 +130,49 @@
           (document.createElement ('code'));
       code.id = 'parsed-code';
 
+      window.updateViews = function () {
+        var iframe = $('style-frame');
+        var idoc = iframe.contentWindow.document;
+
+        var ol = $('parsed-tree');
+        ol.innerHTML = '';
+        var code = $('parsed-code');
+
+        var pcontext = $('parse-context').value;
+        if (pcontext == 'style-attribute') {
+          var idiv = idoc.body.firstChild;
+          window.addIEStyleDeclarationObjectToList (idiv.style, ol);
+          code.innerText = idiv.style.cssText;
+        } else {
+          var istyle = idoc.getElementsByTagName ('style')[0];
+          window.addIEStyleSheetObjectToList (istyle.styleSheet, ol, true);
+          code.innerText = istyle.styleSheet.cssText;
+        }
+        
+        $('cssTreeLink').href = 'data:text/plain;charset=utf-8,' +
+            encodeURIComponent ('<ol>' + ol.innerHTML + '</ol>');
+        $('cssTextLink').href = 'data:text/plain;charset=utf-8,' +
+            encodeURIComponent ($('parsed-code-parent').innerHTML);
+
+        var htmlAll = encodeURIComponent (currentHTMLDoctype + '<html>' +
+            idoc.documentElement.innerHTML + '</html>');
+        $('test-as-data').href = 'data:text/html;charset=utf-8,' + htmlAll;
+        $('test-as-about').href = 'about:' + htmlAll;
+        $('test-as-javascript').href = 'javascript:%22' +
+            htmlAll.replace (/%5C/g, '%5C%5C')
+                .replace (/%0D/g, '%5Cu000D')
+                .replace (/%0A/g, '%5Cu000A')
+                .replace (/%22/g, '%5C%22') + '%22';
+        /*
+          Note that these URI might not be equal to the one rendered,
+          since |innerHTML| might not be return a round-tripable
+          serialization of the DOM.  Especially, it cannot handle
+          the case with |</style>| contained in |style| element.
+          In addition, WinIE normalize |style| content.
+        */
+      }; // updateViews (IE)
+
+      var u = updateViews;
       window.updateParsed = function (sourceCodeValue, htmlSourceCodeValue) {
         var pcontext = $('parse-context').value;
 
@@ -143,44 +186,17 @@
               record (s);
             };
             
-            var idiv = idoc.body.firstChild;
-            var ol = $('parsed-tree');
-            ol.innerHTML = '';
-            var code = $('parsed-code');
-
             if (pcontext == 'style-attribute') {
-              window.addIEStyleDeclarationObjectToList (idiv.style, ol);
-              code.innerText = idiv.style.cssText;
+              //
             } else {
               var istyle = idoc.getElementsByTagName ('style')[0];
               istyle.styleSheet.cssText = sourceCodeValue;
-              window.addIEStyleSheetObjectToList (istyle.styleSheet, ol, true);
-              code.innerText = istyle.styleSheet.cssText;
             }
-            
-            $('cssTreeLink').href = 'data:text/plain;charset=utf-8,' +
-                encodeURIComponent ('<ol>' + ol.innerHTML + '</ol>');
-            $('cssTextLink').href = 'data:text/plain;charset=utf-8,' +
-                encodeURIComponent ($('parsed-code-parent').innerHTML);
 
+            var idiv = idoc.body.firstChild;
             idiv.innerHTML = htmlSourceCodeValue;
- 
-            var htmlAll = encodeURIComponent (currentHTMLDoctype + '<html>' +
-                idoc.documentElement.innerHTML + '</html>');
-            $('test-as-data').href = 'data:text/html;charset=utf-8,' + htmlAll;
-            $('test-as-about').href = 'about:' + htmlAll;
-            $('test-as-javascript').href = 'javascript:%22' +
-                htmlAll.replace (/%5C/g, '%5C%5C')
-                    .replace (/%0D/g, '%5Cu000D')
-                    .replace (/%0A/g, '%5Cu000A')
-                    .replace (/%22/g, '%5C%22') + '%22';
-            /*
-              Note that these URI might not be equal to the one rendered,
-              since |innerHTML| might not be return a round-tripable
-              serialization of the DOM.  Especially, it cannot handle
-              the case with |</style>| contained in |style| element.
-              In addition, WinIE normalize |style| content.
-            */
+
+            u ();
 
             this.onreadystatechange = null;
           }
@@ -631,7 +647,7 @@ sheet) are accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2007/12/30 09:41:50 $ -->
+<!-- $Date: 2007/12/30 09:52:26 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
