@@ -226,16 +226,34 @@
           iframe.contentWindow.w = function (s) {
             record (s);
           };
+          iframe.contentWindow.u = updateViews;
+          iframe.contentWindow.ss = function () {
+            return idoc.getElementsByTagName ('style')[0].sheet;
+          };
+          iframe.contentWindow.sd = function () {
+            if ($('parse-context').value == 'style-attribute') {
+              return idoc.body.firstChild.style;
+            } else {
+              var rs = idoc.getElementsByTagName ('style')[0].sheet.cssRules;
+              var rsL = rs.length;
+              for (var i = 0; i < rsL; i++) {
+                var rule = rs[i];
+                if (rule.type == rule.STYLE_RULE) {
+                  return rule.style;
+                }
+              }
+              return null;
+            }
+          };
         }
         $('log').innerHTML = '';
-
-        var pcontext = $('parse-context').value;
 
         var idiv = idoc.body.firstChild;
         idiv.setAttribute ('style', '');
         var istyle = idoc.getElementsByTagName ('style')[0];
         istyle.textContent = '';
 
+        var pcontext = $('parse-context').value;
         if (pcontext == 'style-attribute') {
           idiv.setAttribute ('style', sourceCodeValue);
         } else {
@@ -244,10 +262,10 @@
 
         idiv.innerHTML = htmlSourceCodeValue;
 
-        updateViews (pcontext);
+        updateViews ();
       }; // updateParsed (CSSOM)
 
-      window.updateViews = function (pContext) {
+      window.updateViews = function () {
         var iframe = $('style-frame');
         var idoc = iframe.contentDocument;
 
@@ -257,7 +275,8 @@
         var ol2 = $('parsed-code');
         ol2.textContent = '';
 
-        if (pContext == 'style-attribute') {
+        var pcontext = $('parse-context').value;
+        if (pcontext == 'style-attribute') {
           var idiv = idoc.body.firstChild;
 
           window.addCSSOMStyleDeclarationObjectToList (idiv.style, ol);
@@ -591,21 +610,28 @@ to test (<a href="javascript:"
 <h2>Log (<a href="javascript:"
     onclick="toggleBoxDisplay (this, 'log'); return false">hide</a>)</h2>
 <pre id="log"></pre>
-<p>This script puts a function <code>w (<var>s</var>)</code>into the global
-scope of the test page, where <var>s</var> is a string to output to the
-log.  Also, files <a href=image><code>image</code></a> (a <abbr>PNG</abbr> 
+<p>This script puts functions into the global scope of the test page.  
+<code>w (<var>s</var>)</code> outputs string <var>s</var> to the log.
+<code>ss ()</code> returns the <code>CSSStyleSheet</code> object (it is
+useless in <code>style=""</code> mode).  <code>sd ()</code> returns the
+first <code>CSSStyleDeclaration</code> object in document order (if any).
+<code>u ()</code> updates the
+<i><abbr title="Cascading Style Sheets Object Model">CSSOM</abbr> view</i> as 
+well as the <i><code>cssText</code> view</i>.</p>
+
+<p>Also, files <a href=image><code>image</code></a> (a <abbr>PNG</abbr> 
 image) and <a href=style><code>style</code></a> (a <abbr>CSS</abbr> style
 sheet) are accessible in the current directory.</p>
 
 <footer>
 <p>See also <a href="http://suika.fam.cx/gate/2005/sw/Live%20CSSOM%20Viewer"
     rel=help>SuikaWiki:Live 
-<abbr title="Cascading Style Sheets Object Model">CSSOM</abbr> Viewer</a>.</p>
+<abbr title="Cascading Style Sheets Object Model">CSSOM</abbr> viewer</a>.</p>
 </footer>
 
 </body>
 </html>
-<!-- $Date: 2007/12/30 09:24:18 $ -->
+<!-- $Date: 2007/12/30 09:41:50 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
