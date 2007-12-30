@@ -267,7 +267,8 @@
               var rsL = rs.length;
               for (var i = 0; i < rsL; i++) {
                 var rule = rs[i];
-                if (rule.type == rule.STYLE_RULE) {
+                if (rule.type == 1 /* STYLE_RULE */) {
+                // NOTE: Opera 9 does not have *_RULE constants.
                   return rule.style;
                 }
               }
@@ -660,7 +661,7 @@ sheet) are accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2007/12/30 10:18:22 $ -->
+<!-- $Date: 2007/12/30 10:28:42 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
