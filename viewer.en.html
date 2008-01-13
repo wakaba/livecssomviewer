@@ -115,7 +115,7 @@
       $('permalink').href = location.pathname + '?c=' +
           encodeURIComponent (newValue) + ';h=' +
           encodeURIComponent (newHTMLValue) + ';p=' +
-          (parseMode == 'noQuirks' ? 'n' :
+          (parseMode == 'xml' ? 'x' : parseMode == 'noQuirks' ? 'n' :
               parseMode == 'limitedQuirks' ? 'l' : 'q') +
           ';x=' + $('parse-context').value;
     }
@@ -140,7 +140,7 @@
 
         var pcontext = $('parse-context').value;
         if (pcontext == 'style-attribute') {
-          var idiv = idoc.body.firstChild;
+          var idiv = idoc.getElementsByTagName ('body')[0].firstChild;
           window.addIEStyleDeclarationObjectToList (idiv.style, ol);
           code.innerText = idiv.style.cssText;
         } else {
@@ -191,7 +191,7 @@
             };
             this.contentWindow.sd = function () {
               if ($('parse-context').value == 'style-attribute') {
-                return idoc.body.firstChild.style;
+                return idoc.getElementsByTagName ('body')[0].firstChild.style;
               } else {
                 var sheet = idoc.getElementsByTagName ('style')[0].styleSheet;
                 var rule = sheet.rules[0];
@@ -206,7 +206,7 @@
               istyle.styleSheet.cssText = sourceCodeValue;
             }
 
-            var idiv = idoc.body.firstChild;
+            var idiv = idoc.getElementsByTagName ('body')[0].firstChild;
             idiv.innerHTML = htmlSourceCodeValue;
 
             u ();
@@ -226,6 +226,7 @@
           text = (currentHTMLDoctype = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">') +
               text;
         } else {
+          // parseMode == 'xml' - not supported
           currentHTMLDoctype = '';
         }
         iframe.src = 'javascript:\''+text+'\'';
@@ -240,16 +241,42 @@
         var iframe = $('style-frame');
         var idoc = iframe.contentDocument;
         if (prevParseMode != parseMode) {
-          if (parseMode == 'noQuirks') {
-            idoc.write (currentHTMLDoctype = '<!DOCTYPE HTML>');
-          } else if (parseMode == 'limitedQuirks') {
-            idoc.write (currentHTMLDoctype = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">');
+          if (parseMode == 'xml') {
+            if (iframe.getAttribute ('src') != 'empty.xhtml') {
+              iframe.onload = function () {
+                window.updateParsed (sourceCodeValue, htmlSourceCodeValue);
+                this.onload = null;
+              };
+              iframe.src = 'empty.xhtml';
+              // NOTE: |data:| URI does not work for this purpose in both
+              // Opera9 and Firefox2 (security exception).  |setDocument|
+              // does not neither (Firefox does not support; Opera does, but
+              // treat |innerHTML| (and style sheet contents, too?) as if
+              // it is an HTML document).
+              return;
+            } else {
+              currentHTMLDoctype = '';
+            }
           } else {
-            currentHTMLDoctype = '';
+            if (iframe.getAttribute ('src') == 'empty.xhtml') {
+              iframe.onload = function () {
+                window.updateParsed (sourceCodeValue, htmlSourceCodeValue);
+                this.onload = null;
+              };
+              iframe.src = 'about:blank';
+              return;
+            }
+            if (parseMode == 'noQuirks') {
+              idoc.write (currentHTMLDoctype = '<!DOCTYPE HTML>');
+            } else if (parseMode == 'limitedQuirks') {
+              idoc.write (currentHTMLDoctype = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">');
+            } else {
+              currentHTMLDoctype = '';
+            }
+            idoc.write ('<html><head><style></style></head>');
+            idoc.write ('<body><div></div></body></html>');
+            idoc.close ();
           }
-          idoc.write ('<html><head><style></style></head>');
-          idoc.write ('<body><div></div></body></html>');
-          idoc.close ();
           prevParseMode = parseMode;
 
           iframe.contentWindow.w = function (s) {
@@ -261,7 +288,7 @@
           };
           iframe.contentWindow.sd = function () {
             if ($('parse-context').value == 'style-attribute') {
-              return idoc.body.firstChild.style;
+              return idoc.getElementsByTagName ('body')[0].firstChild.style;
             } else {
               var rs = idoc.getElementsByTagName ('style')[0].sheet.cssRules;
               var rsL = rs.length;
@@ -278,7 +305,7 @@
         }
         $('log').innerHTML = '';
 
-        var idiv = idoc.body.firstChild;
+        var idiv = idoc.getElementsByTagName ('body')[0].firstChild;
         idiv.setAttribute ('style', '');
         var istyle = idoc.getElementsByTagName ('style')[0];
         istyle.textContent = '';
@@ -307,7 +334,7 @@
 
         var pcontext = $('parse-context').value;
         if (pcontext == 'style-attribute') {
-          var idiv = idoc.body.firstChild;
+          var idiv = idoc.getElementsByTagName ('body')[0].firstChild;
 
           window.addCSSOMStyleDeclarationObjectToList (idiv.style, ol);
 
@@ -341,9 +368,12 @@
           /* Firefox 1.5 does not allow to access to cssRules (!) if
              it contains an @import that is not loaded yet. */
 
-        var htmlAll = encodeURIComponent (currentHTMLDoctype + '<html>' +
-            idoc.documentElement.innerHTML + '</html>');
-        $('test-as-data').href = 'data:text/html;charset=utf-8,' + htmlAll;
+        var htmlAll = encodeURIComponent (currentHTMLDoctype + '<html' +
+            (parseMode == 'xml' ? ' xmlns="http://www.w3.org/1999/xhtml"' : '')
+            + '>' + idoc.documentElement.innerHTML + '</html>');
+        $('test-as-data').href = 'data:' +
+            (parseMode == 'xml' ? 'application/xhtml+xml' : 'text/html') +
+            ';charset=utf-8,' + htmlAll;
         $('test-as-about').href = 'about:' + htmlAll;
         $('test-as-javascript').href = 'javascript:%22' +
             htmlAll.replace (/%5C/g, '%5C%5C')
@@ -371,7 +401,10 @@
         } else if (v[0] == 'h') {
           $('html-source-code').value = v[1];
         } else if (v[0] == 'p') {
-          if (v[1] == 'n') {
+          if (v[1] == 'x') {
+            $('compatMode-xml').checked = true;
+            parseMode = 'xml';
+          } else if (v[1] == 'n') {
             $('compatMode-no-quirks').checked = true;
             parseMode = 'noQuirks';
           } else if (v[1] == 'l') {
@@ -635,7 +668,12 @@ to test (<a href="javascript:"
     id=compatMode-quirks
     onchange="parseMode = value; sourceTextUpdated (true)"
     onclick=" onchange () ">
-    <label for=compatMode-quirks>Quirks</label></p>
+    <label for=compatMode-quirks>Quirks</label>
+<input type=radio name=compatMode value="xml"
+    id=compatMode-xml
+    onchange="parseMode = value; sourceTextUpdated (true)"
+    onclick=" onchange () ">
+    <label for=compatMode-xml><abbr title="Extensible Markup Language">XML</abbr></label></p>
 
 <h2>Log (<a href="javascript:"
     onclick="toggleBoxDisplay (this, 'log'); return false">hide</a>)</h2>
@@ -661,7 +699,7 @@ sheet) are accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2007/12/30 10:28:42 $ -->
+<!-- $Date: 2008/01/13 13:17:49 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
