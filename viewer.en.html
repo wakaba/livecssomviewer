@@ -244,8 +244,8 @@
           if (parseMode == 'xml') {
             if (iframe.getAttribute ('src') != 'empty.xhtml') {
               iframe.onload = function () {
+                iframe.onload = null;
                 window.updateParsed (sourceCodeValue, htmlSourceCodeValue);
-                this.onload = null;
               };
               iframe.src = 'empty.xhtml';
               // NOTE: |data:| URI does not work for this purpose in both
@@ -260,8 +260,8 @@
           } else {
             if (iframe.getAttribute ('src') == 'empty.xhtml') {
               iframe.onload = function () {
+                iframe.onload = null;
                 window.updateParsed (sourceCodeValue, htmlSourceCodeValue);
-                this.onload = null;
               };
               iframe.src = 'about:blank';
               return;
@@ -699,7 +699,7 @@ sheet) are accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2008/01/13 13:17:49 $ -->
+<!-- $Date: 2008/01/14 03:54:10 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
