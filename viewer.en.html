@@ -4,6 +4,11 @@
 <title>Live CSSOM Viewer</title>
 <link rel=author href="http://suika.fam.cx/~wakaba/who?">
 <link rel=license href="http://suika.fam.cx/c/gnu/gpl">
+<!-- ignore {}
+.style-in-myself {
+  color: blue;
+}
+-->
 <style type="text/css">
   #source-code, #parsed-tree, #parsed-code, #style-frame, #html-source-code,
   #log {
@@ -499,7 +504,21 @@
                   .textContent = rules[i].cssText;
             }
           } catch (e) {
-            record ('Error: ' + e);
+            clearTimeout (window.cssTextTimer);
+            window.cssTextTimer = setTimeout (function () {
+              try {
+                ol2.textContent = '';
+                var rules = istyle.sheet.cssRules; // Security error, if it contains @import, in Firefox 2
+                for (var i = 0; i < rules.length; i++) {
+                  ol2.appendChild (document.createElement ('li'))
+                      .appendChild (document.createElement ('pre'))
+                      .appendChild (document.createElement ('code'))
+                      .textContent = rules[i].cssText;
+                }
+              } catch (e) {
+                record ('Error: ' + e);
+              }
+            }, 1000);
           }
         }
             
@@ -591,8 +610,25 @@
         }
       }
     } catch (e) {
-      record ('Error: ' + e);
+      clearTimeout (window.cssRulesTimer);
+      window.cssRulesTimer = setTimeout (function () {
+        try {
+          var rules = obj.cssRules; // Security error, if ...
+          if (rules && rules.length > 0) {
+            var ol = document.createElement ('ol');
+            li.appendChild (ol);
+            for (var i = 0; i < rules.length; i++) {
+              window.addCSSOMRuleObjectToList (rules[i], ol);
+            }
+          }
+        } catch (e) {
+          record ('Error: ' + e);
+        }    
+      }, 1000); // Wait until |@import|ed style sheets are loaded
     }
+
+    // NOTE: See <http://suika.fam.cx/gate/2005/sw/import> for details
+    // on |@import| problem.
   } // addCSSOMStyleSheetObjectToList
   
   function addIEStyleSheetObjectToList (obj, rList, isRoot) {
@@ -861,7 +897,7 @@ sheet) are accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2008/01/19 03:33:56 $ -->
+<!-- $Date: 2008/01/19 04:43:06 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
