@@ -452,7 +452,13 @@
             ig.appendChild (idoc.importNode (parsedChilds[i], true));
           }
         } else {
-          idiv.innerHTML = htmlSourceCodeValue;
+          try {
+            idiv.innerHTML = htmlSourceCodeValue;
+          } catch (e) {
+            // NOTE: Firefox 2 abort if not well-formed in XML mode.
+            // (Opera 9 does not.)
+            record ('Document fragment parse error: ' + e);
+          }
         }
         if (idiv && isvg) {
           idiv.appendChild (isvg);
@@ -899,7 +905,7 @@ sheet) are accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2008/01/19 05:02:05 $ -->
+<!-- $Date: 2008/01/19 05:06:01 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
