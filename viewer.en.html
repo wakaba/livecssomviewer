@@ -149,12 +149,18 @@
           window.addIEStyleDeclarationObjectToList (idiv.style, ol);
           code.innerText = idiv.style.cssText;
         } else {
+          if (pcontext != 'style-element' && pcontext != '') {
+            record ('CSS context "' + pcontext + '" is not supported');
+          }
           var istyle = idoc.getElementsByTagName ('style')[0];
           window.addIEStyleSheetObjectToList (istyle.styleSheet, ol, true);
           code.innerText = istyle.styleSheet.cssText;
         }
 
-        // NOTE: 'fragment-context' is not supported
+        var fcontext = $('fragment-context').value;
+        if (fcontext != 'html-div' && fcontext != '') {
+          record ('Document context "' + fcontext + '" is not supported');
+        }
         
         $('cssTreeLink').href = 'data:text/plain;charset=utf-8,' +
             encodeURIComponent ('<ol>' + ol.innerHTML + '</ol>');
@@ -182,13 +188,13 @@
       var u = updateViews;
       window.updateParsed = function (sourceCodeValue, htmlSourceCodeValue) {
         var pcontext = $('parse-context').value;
+        $('log').innerHTML = '';
 
         var iframe = $('style-frame');
         iframe.onreadystatechange = function () {
           if (this.readyState == 'complete') {
             var idoc = this.contentWindow.document;
 
-            $('log').innerHTML = '';
             this.contentWindow.w = function (s) {
               record ('log: ' + s);
             };
@@ -233,7 +239,9 @@
           text = (currentHTMLDoctype = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">') +
               text;
         } else {
-          // parseMode == 'xhtml' / 'svg' - not supported
+          if (parseMode != 'quirks' && parseMode != '') {
+            record ('Parse mode "' + parseMode + '" is not supported');
+          }
           currentHTMLDoctype = '';
         }
         iframe.src = 'javascript:\''+text+'\'';
@@ -266,17 +274,29 @@
             }
 
             iframe.contentWindow.ss = function () {
-              return idoc.getElementsByTagNameNS
-                  ('http://www.w3.org/1999/xhtml', 'style')[0].sheet;
+              var pcontext = $('parse-context').value;
+              if (pcontext == 'svg-style-element') {
+                return idoc.getElementsByTagNameNS
+                    ('http://www.w3.org/2000/svg', 'style')[0].sheet;
+              } else {
+                return idoc.getElementsByTagNameNS
+                    ('http://www.w3.org/1999/xhtml', 'style')[0].sheet;
+              }
             };
             iframe.contentWindow.sd = function () {
-              if ($('parse-context').value == 'style-attribute') {
+              var pcontext = $('parse-context').value;
+              if (pcontext == 'svg-style-attribute') {
+                return idoc.getElementsByTagNameNS
+                    ('http://www.w3.org/2000/svg', 'g')[0].style;
+              } else if (pcontext == 'style-attribute') {
                 return idoc.getElementsByTagNameNS
                     ('http://www.w3.org/1999/xhtml', 'body')[0]
                     .firstChild.style;
               } else {
                 var rs = idoc.getElementsByTagNameNS
-                    ('http://www.w3.org/1999/xhtml', 'style')[0]
+                    (pcontext == 'svg-style-element'
+                         ? 'http://www.w3.org/2000/svg'
+                         : 'http://www.w3.org/1999/xhtml', 'style')[0]
                     .sheet.cssRules;
                 var rsL = rs.length;
                 for (var i = 0; i < rsL; i++) {
@@ -310,13 +330,29 @@
             idoc.close ();
 
             iframe.contentWindow.ss = function () {
-              return idoc.getElementsByTagName ('style')[0].sheet;
+              var pcontext = $('parse-context').value;
+              if (pcontext == 'svg-style-element') {
+                return idoc.getElementsByTagNameNS
+                    ('http://www.w3.org/2000/svg', 'style')[0].sheet;
+              } else {
+                return idoc.getElementsByTagName ('style')[0].sheet;
+              }
             };
             iframe.contentWindow.sd = function () {
-              if ($('parse-context').value == 'style-attribute') {
+              var pcontext = $('parse-context').value;
+              if (pcontext == 'svg-style-attribute') {
+                return idoc.getElementsByTagNameNS
+                    ('http://www.w3.org/2000/svg', 'g')[0].style;
+              } else if (pcontext == 'style-attribute') {
                 return idoc.getElementsByTagName ('body')[0].firstChild.style;
               } else {
-                var rs = idoc.getElementsByTagName ('style')[0].sheet.cssRules;
+                var rs;
+                if (pcontext == 'svg-style-element') {
+                  rs = idoc.getElementsByTagNameNS
+                      ('http://www.w3.org/2000/svg', 'g')[0].sheet.cssRules;
+                } else {
+                  rs = idoc.getElementsByTagName ('style')[0].sheet.cssRules;
+                }
                 var rsL = rs.length;
                 for (var i = 0; i < rsL; i++) {
                   var rule = rs[i];
@@ -371,10 +407,17 @@
                         @style
                         (<div> fragment)
 
+          TODO: There are some problems:
+            - style-attribute with svg-g-element in SVG does not make sense.
+            - svg-style-attribute with html-div-element in HTML does not make
+              sense.
+
         */
 
         var idiv;
         var istyle;
+        var isvgstyle = idoc.getElementsByTagNameNS
+            ('http://www.w3.org/2000/svg', 'style')[0];
         var ifo;
         var isvg;
         var ig = idoc.getElementsByTagNameNS
@@ -387,7 +430,9 @@
 
         var pcontext = $('parse-context').value;
         if (parseMode == 'svg' &&
-            (pcontext == 'style-element' || fcontext == 'html-div')) {
+            (pcontext == 'style-element' ||
+             pcontext == 'style-attribute' ||
+             fcontext == 'html-div')) {
           ifo = idoc.createElementNS
               ('http://www.w3.org/2000/svg', 'foreignObject');
           ifo.setAttributeNS (null, 'width', 100);
@@ -412,15 +457,18 @@
                   (idoc.createElementNS
                       ('http://www.w3.org/1999/xhtml', 'div'));
         }
-        if (parseMode != 'svg' && fcontext == 'svg-g') {
+        if (parseMode != 'svg' &&
+            (fcontext == 'svg-g' ||
+             pcontext == 'svg-style-element' ||
+             pcontext == 'svg-style-attribute')) {
           isvg = idiv.appendChild
               (idoc.createElementNS ('http://www.w3.org/2000/svg', 'svg'));
-          isvg.appendChild
+          isvgstyle = isvg.appendChild
               (idoc.createElementNS ('http://www.w3.org/2000/svg', 'defs'))
               .appendChild
                   (idoc.createElementNS
-                      ('http://www.w3.org/2000/svg', 'style'))
-              .setAttributeNS (null, 'type', 'text/css');
+                      ('http://www.w3.org/2000/svg', 'style'));
+          isvgstyle.setAttributeNS (null, 'type', 'text/css');
           ig = isvg.appendChild
               (idoc.createElementNS ('http://www.w3.org/2000/svg', 'g'));
         }
@@ -432,12 +480,26 @@
           ig.textContent = '';
           ig.setAttributeNS (null, 'style', '');
         }
-        istyle.textContent = '';
+        if (istyle) istyle.textContent = '';
+        var isvgstyleNewContent = '';
 
-        if (pcontext == 'style-attribute') {
+        if (pcontext == 'svg-style-attribute') {
+          ig.setAttributeNS (null, 'style', sourceCodeValue);
+        } else if (pcontext == 'style-attribute') {
           idiv.setAttribute ('style', sourceCodeValue);
+        } else if (pcontext == 'svg-style-element') {
+          isvgstyleNewContent = sourceCodeValue;
         } else {
           istyle.textContent = sourceCodeValue;
+        }
+
+        if (isvgstyle && isvgstyleNewContent != isvgstyle.textContent) {
+          // NOTE: Opera 9 does not reflect changes in <svg:style/>.
+          var isvgstyleNew = idoc.createElementNS
+              ('http://www.w3.org/2000/svg', 'style');
+          isvgstyleNew.type = 'text/css';
+          isvgstyleNew.textContent = isvgstyleNewContent;
+          isvgstyle.parentNode.replaceChild (isvgstyleNew, isvgstyle);
         }
 
         if (fcontext == 'svg-g') {
@@ -481,7 +543,17 @@
         ol2.textContent = '';
 
         var pcontext = $('parse-context').value;
-        if (pcontext == 'style-attribute') {
+        if (pcontext == 'svg-style-attribute') {
+          var ig = idoc.getElementsByTagNameNS
+              ('http://www.w3.org/2000/svg', 'g')[0];
+
+          window.addCSSOMStyleDeclarationObjectToList (ig.style, ol);
+
+          ol2.appendChild (document.createElement ('li'))
+              .appendChild (document.createElement ('pre'))
+              .appendChild (document.createElement ('code'))
+              .textContent = ig.style.cssText;
+        } else if (pcontext == 'style-attribute') {
           var idiv = idoc.getElementsByTagName ('body')[0].firstChild;
 
           window.addCSSOMStyleDeclarationObjectToList (idiv.style, ol);
@@ -492,11 +564,16 @@
               .textContent = idiv.style.cssText;
         } else {
           var istyle;
-          if (parseMode == 'xhtml' || parseMode == 'svg') {
+          if (pcontext == 'svg-style-element') {
             istyle = idoc.getElementsByTagNameNS
-                ('http://www.w3.org/1999/xhtml', 'style')[0];
+                ('http://www.w3.org/2000/svg', 'style')[0];
           } else {
-            istyle = idoc.getElementsByTagName ('style')[0];
+            if (parseMode == 'xhtml' || parseMode == 'svg') {
+              istyle = idoc.getElementsByTagNameNS
+                  ('http://www.w3.org/1999/xhtml', 'style')[0];
+            } else {
+              istyle = idoc.getElementsByTagName ('style')[0];
+            }
           }
 
           addCSSOMStyleSheetObjectToList (istyle.sheet, ol);
@@ -821,6 +898,8 @@ Viewer</h1>
     <select id=parse-context onchange="sourceTextUpdated (true)">
     <option value=style-element selected>HTML &lt;style> element</option>
     <option value=style-attribute>HTML style="" attribute</option>
+    <option value=svg-style-element>SVG &lt;style> element</option>
+    <option value=svg-style-attribute>SVG style="" attribute</option>
     </select>)</h2>
 <p><textarea id="source-code" oninput="sourceTextUpdated ()" onkeypress="sourceTextUpdated ()"></textarea></p>
 
@@ -905,7 +984,7 @@ sheet) are accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2008/01/19 05:06:01 $ -->
+<!-- $Date: 2008/01/19 06:47:07 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
