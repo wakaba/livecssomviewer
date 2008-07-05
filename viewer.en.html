@@ -87,10 +87,10 @@
   }
 
   function htescape (s) {
-    return s.replace (/&/, '&amp;')
-        .replace (/</, '&lt;')
-        .replace (/>/, '&gt;')
-        .replace (/"/, '&quot;');
+    return s.replace (/&/g, '&amp;')
+        .replace (/</g, '&lt;')
+        .replace (/>/g, '&gt;')
+        .replace (/"/g, '&quot;');
   } // s
   
   var updateTimer = 0;
@@ -984,7 +984,7 @@ sheet) are accessible in the current directory.</p>
 
 </body>
 </html>
-<!-- $Date: 2008/01/19 06:47:07 $ -->
+<!-- $Date: 2008/07/05 13:35:46 $ -->
 <!--
 
 Copyright 2007 Wakaba <w@suika.fam.cx>
