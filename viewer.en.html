@@ -232,7 +232,7 @@
           text += ' style="' + htescape (sourceCodeValue) + '"';
           /* NOTE: Or, you can set idiv.style.cssText */
         }
-        text += '></div></body>';
+        text += '></div></'+'body>';
         if (parseMode == 'noQuirks') {
           text = (currentHTMLDoctype = '<!DOCTYPE HTML>') + text;
         } else if (parseMode == 'limitedQuirks') {
@@ -326,7 +326,7 @@
               currentHTMLDoctype = '';
             }
             idoc.write ('<html><head><style></style></head>');
-            idoc.write ('<body><div></div></body></html>');
+            idoc.write ('<body><div></div></'+'body></html>');
             idoc.close ();
 
             iframe.contentWindow.ss = function () {
