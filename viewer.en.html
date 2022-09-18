@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <title>Live CSSOM Viewer</title>
-<link rel=author href="http://suika.fam.cx/~wakaba/who?">
-<link rel=license href="http://suika.fam.cx/c/gnu/gpl">
+<link rel=author href="https://suika.suikawiki.org/~wakaba/who?">
+<link rel=license href="https://suika.suikawiki.org/c/gnu/gpl">
 <!-- ignore {}
 .style-in-myself {
   color: blue;
@@ -110,7 +110,7 @@
   
   function updateParsedTreeAndText () {
     var newValue = $('source-code').value + '';
-          /* Workaround for <http://suika.fam.cx/gate/2005/sw/cssText#anchor-2> */
+          /* Workaround for <https://suika.suikawiki.org/gate/2005/sw/cssText#anchor-2> */
     var newHTMLValue = $('html-source-code').value;
     if (prevSourceText != newValue || prevHTMLSourceText != newHTMLValue) {
       prevSourceText = newValue;
@@ -710,7 +710,7 @@
       }, 1000); // Wait until |@import|ed style sheets are loaded
     }
 
-    // NOTE: See <http://suika.fam.cx/gate/2005/sw/import> for details
+    // NOTE: See <https://suika.suikawiki.org/gate/2005/sw/import> for details
     // on |@import| problem.
   } // addCSSOMStyleSheetObjectToList
   
@@ -982,17 +982,18 @@ image) and <a href=style><code>style</code></a> (a <abbr>CSS</abbr> style
 sheet) are accessible in the current directory.</p>
 
 <footer>
-<p>See also <a href="http://suika.fam.cx/gate/2005/sw/Live%20CSSOM%20Viewer"
+<p>See also <a href="https://suika.suikawiki.org/gate/2005/sw/Live%20CSSOM%20Viewer"
     rel=help>SuikaWiki:Live 
 <abbr title="Cascading Style Sheets Object Model">CSSOM</abbr> viewer</a>.</p>
 </footer>
 
+<script src="https://manakai.github.io/js/global.js" async></script>
+
 </body>
 </html>
-<!-- $Date: 2008/07/05 13:35:46 $ -->
 <!--
 
-Copyright 2007 Wakaba <w@suika.fam.cx>
+Copyright 2007 Wakaba <wakaba@suikawiki.org>
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
